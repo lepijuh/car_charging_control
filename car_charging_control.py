@@ -13,13 +13,12 @@ import requests
 # http://localhost:5000/charge_hour?vin=YOURVIN&hour=22&minute=30
 
 
-
 # Set the time zone to Finnish time (Eastern European Time) for datetime
 finnish_tz = pytz.timezone('Europe/Helsinki')
 
 vin = 'YOURVIN'
 set_time = '20:00'
-charge_time = 7 # charge time in hours
+charge_hours = 7 # charge time in hours
 start_time = '02:00'
 charging_current = 13 # Charging current per phase in A
 baseurl = 'localhost' # IP for the psa-car-control
@@ -39,17 +38,17 @@ def check_needed_charge_time(baseurl, vin, charging_current):
         data = response.json()
         battery_level = data['energy']['0']['level']
         needed_charge = 100 - int(battery_level)
-        charge_time = round((45*(needed_charge/100))/((charging_current*3*225)/1000))
+        charge_hours = round((45*(needed_charge/100))/((charging_current*3*225)/1000))
         current_time = datetime.datetime.now(finnish_tz).time()
-        print(current_time,' INF: Charge time calculated to be '+str(charge_time)+' hours.')
-        return charge_time
+        print(current_time,' INF: Charge time calculated to be '+str(charge_hours)+' hours.')
+        return charge_hours
     else:
         current_time = datetime.datetime.now(finnish_tz).time()
         print(current_time,' ERR: Vehicle info could not be retrieved after '+max_attempts+' attempts. 60 seconds between attempts.')
 
 
-def charge_start_time(charge_time, start_time):
-    charge_time += 1
+def charge_start_time(charge_hours, start_time):
+    charge_hours += 1
     # Calculate the current and next day
     current_date = datetime.date.today()
     next_date = current_date + datetime.timedelta(days=1)
@@ -57,7 +56,7 @@ def charge_start_time(charge_time, start_time):
     time_range = f"{current_date.isoformat()}T22:00_{next_date.isoformat()}T07:00"
     url = 'https://www.sahkohinta-api.fi/api/v1/halpa'
     params = {
-        'tunnit': charge_time,
+        'tunnit': charge_hours,
         'tulos': 'sarja',
         'aikaraja': time_range
     }
@@ -114,8 +113,8 @@ def set_charging_start(start_time,vin):
     
 
 def execute_all():
-    charge_time = check_needed_charge_time(baseurl, vin, charging_current)
-    start_time = charge_start_time(charge_time, start_time)
+    charge_hours = check_needed_charge_time(baseurl, vin, charging_current)
+    start_time = charge_start_time(charge_hours, start_time)
     set_charging_start(start_time,vin)
     
 
