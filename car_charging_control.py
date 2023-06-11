@@ -18,7 +18,7 @@ finnish_tz = pytz.timezone('Europe/Helsinki')
 
 vin = 'YOURVIN'
 set_time = '18:30'
-charge_hours = 7 # charge time in hours
+charge_hours = 5 # charge time in hours
 start_time = '02:00'
 charging_current = 13 # Charging current per phase in A
 baseurl = '192.168.0.200' # IP for the psa-car-control
