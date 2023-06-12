@@ -157,7 +157,7 @@ def execute_all(start_time):
 # Schedule tasks
 schedule.every().day.at(set_time, 'Europe/Helsinki').do(execute_all, start_time).tag('execute_all')
 
-print('Program started. Waiting for scheduled tasks.')
+print('Program started. Waiting for scheduled tasks..')
 # Main loop to execute scheduled tasks
 while True:
     schedule.run_pending()
