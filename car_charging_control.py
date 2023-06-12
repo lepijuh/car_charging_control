@@ -14,12 +14,12 @@ import requests
 
 
 vin = 'YOURVIN' # Car VIN as a string
-set_time = '18:30' # When the prices are checked and the start time for the car set
-charge_hours = 5 # charge time in hours
-start_time = '02:00' # default start time if there is some problems getting the prices etc.
+set_time = '18:30' # When the prices are checked and the charging start time for the car is set.
+charge_hours = 5 # Default charge time in hours if the hour calculation fails for some reason.
+start_time = '02:00' # Default start time if there is some problems getting the prices etc.
 charging_current = 13 # Charging current per phase in A. Three phases assumed to be used.
-baseurl = '192.168.0.200' # IP for the psa-car-control
-finnish_tz = pytz.timezone('Europe/Helsinki') # Set the time zone to Finnish time (Eastern European Time) for datetime
+baseurl = '192.168.0.200' # IP for the psa-car-controller.
+finnish_tz = pytz.timezone('Europe/Helsinki') # Set the time zone to Finnish time (Eastern European Time) for datetime.
 
 
 def convert_to_minutes(time_str):
