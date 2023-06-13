@@ -13,13 +13,13 @@ import requests
 # http://localhost:5000/charge_hour?vin=YOURVIN&hour=22&minute=30
 
 
-vin = 'YOURVIN' # Car VIN as a string
-set_time = '18:30' # When the prices are checked and the charging start time for the car is set.
-charge_hours = 5 # Default charge time in hours if the hour calculation fails for some reason.
-start_time = '02:00' # Default start time if there is some problems getting the prices etc.
+vin = 'yourvin' # Car VIN as a string
+set_time = '22:30' # When the prices are checked and the start time for the car set
+charge_hours = 5 # charge time in hours
+start_time = '02:00' # default start time if there is some problems getting the prices etc.
 charging_current = 13 # Charging current per phase in A. Three phases assumed to be used.
-baseurl = '192.168.0.200' # IP for the psa-car-controller.
-finnish_tz = pytz.timezone('Europe/Helsinki') # Set the time zone to Finnish time (Eastern European Time) for datetime.
+baseurl = '192.168.0.200' # IP for the psa-car-control
+finnish_tz = pytz.timezone('Europe/Helsinki') # Set the time zone to Finnish time (Eastern European Time) for datetime
 
 
 def convert_to_minutes(time_str):
@@ -50,13 +50,14 @@ def check_needed_charge_time(baseurl, vin, charging_current):
         print(current_time,' INFO: Response Status Code:', response.status_code)
         if response.status_code == 200:
             break  # Success, exit the loop
+        print(current_time,' ERROR: Vehicle info could not be retrieved on attempt number '+str(attempt)+'/'+str(max_attempts)+'. Waiting 1 minute and trying again.')
         time.sleep(60)
         attempt += 1
     if response.status_code == 200:
         data = response.json()
         battery_level = data['energy'][0]['level']
         needed_charge = 100 - int(battery_level)
-        charge_hours = round((45*(needed_charge/100))/((charging_current*3*225)/1000))
+        charge_hours = round((45*(needed_charge/100))/((charging_current*3*225)/1000), 2) # Charge hours with two decimal accuracy
         current_time = datetime.datetime.now(finnish_tz).time()
         print(current_time,' INFO: Charge time calculated to be '+str(charge_hours)+' hours.')
         return charge_hours
@@ -71,7 +72,7 @@ def charge_start_time(charge_hours, start_time):
     current_date = datetime.date.today()
     next_date = current_date + datetime.timedelta(days=1)
     # Create the time range string
-    time_range = f"{current_date.isoformat()}T22:00_{next_date.isoformat()}T07:00"
+    time_range = f'{current_date.isoformat()}T23:00_{next_date.isoformat()}T07:00'
     url = 'https://www.sahkohinta-api.fi/api/v1/halpa'
     params = {
         'tunnit': charge_hours,
@@ -88,6 +89,7 @@ def charge_start_time(charge_hours, start_time):
         print(current_time,' INFO: Response Status Code:', response.status_code)
         if response.status_code == 200:
             break  # Success, exit the loop
+        print(current_time,' ERROR: Prices could not be updated on attempt number '+str(attempt)+'/'+str(max_attempts)+'. Waiting 1 minute and trying again.')
         time.sleep(60)
         attempt += 1
     if response.status_code == 200:
@@ -95,14 +97,25 @@ def charge_start_time(charge_hours, start_time):
         # Extract the timestamp and convert it to datetime object
         timestamp = [datetime.datetime.fromisoformat(entry['aikaleima_suomi']) for entry in data]
         # Find the earliest timestamp
-        time = min(timestamp).strftime("%H:%M")
-        # Update start_time with new value
-        start_time = time
+        time_min = min(timestamp).strftime("%H:%M")
+        # Check if the last hour is cheaper than the first hour
+        first_price = data[0]["hinta"]
+        last_price = data[-1]["hinta"]
+        if charge_hours > 1 and first_price >= last_price:
+            excess_time = 1 - (charge_hours - int(charge_hours))
+            # Parse the time string to a datetime object
+            time_obj = datetime.datetime.strptime(time_min, "%H:%M")
+            # Add excess_time to the time
+            new_time_obj = time_obj + datetime.timedelta(hours=excess_time)
+            # Convert the datetime object back to a string in the desired format
+            new_time_min = new_time_obj.strftime("%H:%M")
+            start_time = new_time_min
+        else:
+            start_time = time_min
         current_time = datetime.datetime.now(finnish_tz).time()
         print(current_time, ' INFO: Start time updated to '+ start_time +' based on electricity prices.')
         return start_time
     else: # If prices cannot be updated start time is at 02:00.
-        start_time = '02:00'
         current_time = datetime.datetime.now(finnish_tz).time()
         print(current_time," ERROR: Electricity prices couldn't be updated after "+str(max_attempts)+" attempts. 60 seconds between attempts'. Maybe www.sahkonhpinta-api.fi is down. Start time is set to: " + start_time)
 
