@@ -50,9 +50,10 @@ def check_needed_charge_time(baseurl, vin, charging_current):
         print(current_time,' INFO: Response Status Code:', response.status_code)
         if response.status_code == 200:
             break  # Success, exit the loop
-        print(current_time,' ERROR: Vehicle info could not be retrieved on attempt number '+str(attempt)+'/'+str(max_attempts)+'. Waiting 1 minute and trying again.')
-        time.sleep(60)
-        attempt += 1
+        else:
+            print(current_time,' ERROR: Vehicle info could not be retrieved on attempt number '+str(attempt)+'/'+str(max_attempts)+'. Waiting 1 minute and trying again.')
+            time.sleep(60)
+            attempt += 1
     if response.status_code == 200:
         data = response.json()
         battery_level = data['energy'][0]['level']
@@ -63,12 +64,12 @@ def check_needed_charge_time(baseurl, vin, charging_current):
         return charge_hours
     else:
         current_time = datetime.datetime.now(finnish_tz).time()
-        print(current_time,' ERROR: Vehicle info could not be retrieved after '+str(max_attempts)+' attempts. 60 seconds between attempts.')
+        print(current_time,' ERROR: Vehicle info could not be retrieved after '+str(max_attempts)+' attempts. 1 minute between attempts.')
 
 
 def charge_start_time(charge_hours, start_time):
     charge_hours += 1
-    # Calculate the current and next day
+    # Calculate the current and the next day
     current_date = datetime.date.today()
     next_date = current_date + datetime.timedelta(days=1)
     # Create the time range string
@@ -89,16 +90,17 @@ def charge_start_time(charge_hours, start_time):
         print(current_time,' INFO: Response Status Code:', response.status_code)
         if response.status_code == 200:
             break  # Success, exit the loop
-        print(current_time,' ERROR: Prices could not be updated on attempt number '+str(attempt)+'/'+str(max_attempts)+'. Waiting 1 minute and trying again.')
-        time.sleep(60)
-        attempt += 1
+        else:
+            print(current_time,' ERROR: Prices could not be updated on attempt number '+str(attempt)+'/'+str(max_attempts)+'. Waiting 1 minute and trying again.')
+            time.sleep(60)
+            attempt += 1
     if response.status_code == 200:
         data = response.json()
         # Extract the timestamp and convert it to datetime object
         timestamp = [datetime.datetime.fromisoformat(entry['aikaleima_suomi']) for entry in data]
         # Find the earliest timestamp
         time_min = min(timestamp).strftime("%H:%M")
-        # Check if the last hour is cheaper than the first hour
+        # Check if the last hour is cheaper than the first hour and shift the start_time if it is.
         first_price = data[0]["hinta"]
         last_price = data[-1]["hinta"]
         if charge_hours > 1 and first_price >= last_price:
@@ -157,13 +159,16 @@ def set_charging_start(start_time,vin):
         current_time = datetime.datetime.now(finnish_tz).time()
         print(current_time,' ERROR: Start time for charging could not be set after '+str(max_attempts)+' attempts. 15 minutes between each attempt.')
     else:
+        time.sleep(2)
         current_time = datetime.datetime.now(finnish_tz).time()
         print(current_time, ' INFO: Start time successfully set. Charging starts at '+start_time)
     
 
 def execute_all(start_time):
     charge_hours = check_needed_charge_time(baseurl, vin, charging_current)
+    time.sleep(1)
     start_time = charge_start_time(charge_hours, start_time)
+    time.sleep(1)
     set_charging_start(start_time,vin)
     
 
