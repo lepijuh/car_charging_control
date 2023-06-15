@@ -3,6 +3,7 @@ import schedule
 import time
 import pytz
 import requests
+import math
 
 # PSA Car Control requests used here:
 
@@ -18,7 +19,11 @@ execution_time = '22:30' # When the prices are checked and the start time for th
 charge_hours = 5 # default charge time in hours if the needed charge time cannot be calculated.
 charging_start_time = '02:00' # default charging start time if there is some problems getting the prices etc.
 charging_current = 13 # Charging current per phase in A. Three phases assumed to be used.
-baseurl = '192.168.0.200' # IP for your psa-car-control listener.
+charging_efficiency = 80 # Charging efficiency as %.
+# Start time of the time range for price checking for the lowest prices. Start time is current day and stop time is the next day. So for example 23:00 - 07:00 over the night.
+price_check_time_range_start = '23:00'
+price_check_time_range_stop = '07:00'
+baseurl = '192.168.0.200' # IP to your psa-car-control listener.
 localization = 'Europe/Helsinki'
 timezone = pytz.timezone(localization) # Set the time zone to Finnish time (Eastern European Time) for datetime
 
@@ -40,7 +45,7 @@ def convert_to_minutes(time_str):
         return hours * 60 + minutes
 
 
-def check_needed_charge_time(baseurl, vin, charging_current):
+def check_needed_charge_time(baseurl, vin, charging_current, charging_efficiency):
     max_attempts = 5
     attempt = 1
     response = None
@@ -59,7 +64,7 @@ def check_needed_charge_time(baseurl, vin, charging_current):
         data = response.json()
         battery_level = data['energy'][0]['level']
         needed_charge = 100 - int(battery_level)
-        charge_hours = round((45*(needed_charge/100))/((charging_current*3*225)/1000), 2) # Charge hours with two decimal accuracy
+        charge_hours = round((45*(needed_charge/100))/((charging_efficiency/100)*(charging_current*3*225)/1000), 2) # Charge hours with two decimal accuracy
         current_time = datetime.datetime.now(timezone).time()
         print(current_time,' INFO: Charge time calculated to be '+str(charge_hours)+' hours.')
         return charge_hours
@@ -68,13 +73,14 @@ def check_needed_charge_time(baseurl, vin, charging_current):
         print(current_time,' ERROR: Vehicle info could not be retrieved after '+str(max_attempts)+' attempts. 1 minute between attempts.')
 
 
-def calculate_charging_start_time(charge_hours, charging_start_time):
+def calculate_charging_start_time(charge_hours, charging_start_time, price_check_time_range_start, price_check_time_range_stop):
+    charge_hours = math.ceil(charge_hours)
     charge_hours += 1
     # Calculate the current and the next day
     current_date = datetime.date.today()
     next_date = current_date + datetime.timedelta(days=1)
     # Create the time range string
-    time_range = f'{current_date.isoformat()}T23:00_{next_date.isoformat()}T07:00'
+    time_range = f'{current_date.isoformat()}T{price_check_time_range_start}_{next_date.isoformat()}T{price_check_time_range_stop}'
     url = 'https://www.sahkohinta-api.fi/api/v1/halpa'
     params = {
         'tunnit': charge_hours,
@@ -166,9 +172,9 @@ def set_charging_start(charging_start_time,vin):
     
 
 def execute_all(charging_start_time):
-    charge_hours = check_needed_charge_time(baseurl, vin, charging_current)
+    charge_hours = check_needed_charge_time(baseurl, vin, charging_current, charging_efficiency)
     time.sleep(1)
-    charging_start_time = calculate_charging_start_time(charge_hours, charging_start_time)
+    charging_start_time = calculate_charging_start_time(charge_hours, charging_start_time, price_check_time_range_start, price_check_time_range_stop)
     time.sleep(1)
     set_charging_start(charging_start_time,vin)
     
