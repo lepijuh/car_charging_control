@@ -13,13 +13,14 @@ import requests
 # http://localhost:5000/charge_hour?vin=YOURVIN&hour=22&minute=30
 
 
-vin = 'yourvin' # Car VIN as a string
-set_time = '22:30' # When the prices are checked and the start time for the car set
-charge_hours = 5 # charge time in hours
-start_time = '02:00' # default start time if there is some problems getting the prices etc.
+vin = 'yourvin' # Car's VIN as a string.
+execution_time = '22:30' # When the prices are checked and the start time for the car set.
+charge_hours = 5 # default charge time in hours if the needed charge time cannot be calculated.
+charging_start_time = '02:00' # default charging start time if there is some problems getting the prices etc.
 charging_current = 13 # Charging current per phase in A. Three phases assumed to be used.
-baseurl = '192.168.0.200' # IP for the psa-car-control
-finnish_tz = pytz.timezone('Europe/Helsinki') # Set the time zone to Finnish time (Eastern European Time) for datetime
+baseurl = '192.168.0.200' # IP for your psa-car-control listener.
+localization = 'Europe/Helsinki'
+timezone = pytz.timezone(localization) # Set the time zone to Finnish time (Eastern European Time) for datetime
 
 
 def convert_to_minutes(time_str):
@@ -45,7 +46,7 @@ def check_needed_charge_time(baseurl, vin, charging_current):
     response = None
     while attempt <= max_attempts:
         response = requests.get('http://'+baseurl+':5000/get_vehicleinfo/'+vin)
-        current_time = datetime.datetime.now(finnish_tz).time()
+        current_time = datetime.datetime.now(timezone).time()
         print(current_time,' INFO: Request URL:', response.request.url)
         print(current_time,' INFO: Response Status Code:', response.status_code)
         if response.status_code == 200:
@@ -59,15 +60,15 @@ def check_needed_charge_time(baseurl, vin, charging_current):
         battery_level = data['energy'][0]['level']
         needed_charge = 100 - int(battery_level)
         charge_hours = round((45*(needed_charge/100))/((charging_current*3*225)/1000), 2) # Charge hours with two decimal accuracy
-        current_time = datetime.datetime.now(finnish_tz).time()
+        current_time = datetime.datetime.now(timezone).time()
         print(current_time,' INFO: Charge time calculated to be '+str(charge_hours)+' hours.')
         return charge_hours
     else:
-        current_time = datetime.datetime.now(finnish_tz).time()
+        current_time = datetime.datetime.now(timezone).time()
         print(current_time,' ERROR: Vehicle info could not be retrieved after '+str(max_attempts)+' attempts. 1 minute between attempts.')
 
 
-def charge_start_time(charge_hours, start_time):
+def calculate_charging_start_time(charge_hours, charging_start_time):
     charge_hours += 1
     # Calculate the current and the next day
     current_date = datetime.date.today()
@@ -85,7 +86,7 @@ def charge_start_time(charge_hours, start_time):
     response = None
     while attempt <= max_attempts:
         response = requests.get(url, params=params)
-        current_time = datetime.datetime.now(finnish_tz).time()
+        current_time = datetime.datetime.now(timezone).time()
         print(current_time,' INFO: Request URL:', response.request.url)
         print(current_time,' INFO: Response Status Code:', response.status_code)
         if response.status_code == 200:
@@ -100,7 +101,7 @@ def charge_start_time(charge_hours, start_time):
         timestamp = [datetime.datetime.fromisoformat(entry['aikaleima_suomi']) for entry in data]
         # Find the earliest timestamp
         time_min = min(timestamp).strftime("%H:%M")
-        # Check if the last hour is cheaper than the first hour and shift the start_time if it is.
+        # Check if the last hour is cheaper than the first hour and shift the charging_start_time if it is.
         first_price = data[0]["hinta"]
         last_price = data[-1]["hinta"]
         if charge_hours > 1 and first_price >= last_price:
@@ -111,20 +112,20 @@ def charge_start_time(charge_hours, start_time):
             new_time_obj = time_obj + datetime.timedelta(hours=excess_time)
             # Convert the datetime object back to a string in the desired format
             new_time_min = new_time_obj.strftime("%H:%M")
-            start_time = new_time_min
+            charging_start_time = new_time_min
         else:
-            start_time = time_min
-        current_time = datetime.datetime.now(finnish_tz).time()
-        print(current_time, ' INFO: Start time updated to '+ start_time +' based on electricity prices.')
-        return start_time
+            charging_start_time = time_min
+        current_time = datetime.datetime.now(timezone).time()
+        print(current_time, ' INFO: Start time updated to '+ charging_start_time +' based on electricity prices.')
+        return charging_start_time
     else: # If prices cannot be updated start time is at 02:00.
-        current_time = datetime.datetime.now(finnish_tz).time()
-        print(current_time," ERROR: Electricity prices couldn't be updated after "+str(max_attempts)+" attempts. 60 seconds between attempts'. Maybe www.sahkonhpinta-api.fi is down. Start time is set to: " + start_time)
+        current_time = datetime.datetime.now(timezone).time()
+        print(current_time," ERROR: Electricity prices couldn't be updated after "+str(max_attempts)+" attempts. 60 seconds between attempts'. Maybe www.sahkonhpinta-api.fi is down. Start time is set to: " + charging_start_time)
 
 
-def set_charging_start(start_time,vin):
+def set_charging_start(charging_start_time,vin):
     # example request: http://localhost:5000/charge_hour?vin=YOURVIN&hour=22&minute=30
-    hour, minute = start_time.split(':')
+    hour, minute = charging_start_time.split(':')
     url = 'http://'+baseurl+':5000/charge_hour'
     params = {
         'vin': vin,
@@ -136,44 +137,44 @@ def set_charging_start(start_time,vin):
     response1 = None
     while attempt <= max_attempts:
         response1 = requests.get(url, params=params)
-        current_time = datetime.datetime.now(finnish_tz).time()
+        current_time = datetime.datetime.now(timezone).time()
         print(current_time,' INFO: Request URL:', response1.request.url)
         print(current_time,' INFO: Response Status Code:', response1.status_code)
-        current_time = datetime.datetime.now(finnish_tz).time()
+        current_time = datetime.datetime.now(timezone).time()
         print(current_time,' INFO: Waiting 30 seconds.')
         time.sleep(30)
         response2 = requests.get('http://'+baseurl+':5000/get_vehicleinfo/'+vin)
-        current_time = datetime.datetime.now(finnish_tz).time()
+        current_time = datetime.datetime.now(timezone).time()
         print(current_time,' INFO: Request URL:', response2.request.url)
         print(current_time,' INFO: Response Status Code:', response2.status_code)
         data = response2.json()
         time1 = data['energy'][0]['charging']['next_delayed_time']
-        time2 = start_time
+        time2 = charging_start_time
         if response1.status_code == 200 and response2.status_code == 200 and convert_to_minutes(time1) == convert_to_minutes(time2):      
             break  # Success, exit the loop
-        current_time = datetime.datetime.now(finnish_tz).time()
+        current_time = datetime.datetime.now(timezone).time()
         print(current_time,' ERROR: Time could not be set on attempt number '+str(attempt)+'/'+str(max_attempts)+'. Waiting 15 minutes and trying again.')
         time.sleep(300)
         attempt += 1
     if attempt > max_attempts:
-        current_time = datetime.datetime.now(finnish_tz).time()
+        current_time = datetime.datetime.now(timezone).time()
         print(current_time,' ERROR: Start time for charging could not be set after '+str(max_attempts)+' attempts. 15 minutes between each attempt.')
     else:
         time.sleep(2)
-        current_time = datetime.datetime.now(finnish_tz).time()
-        print(current_time, ' INFO: Start time successfully set. Charging starts at '+start_time)
+        current_time = datetime.datetime.now(timezone).time()
+        print(current_time, ' INFO: Start time successfully set. Charging starts at '+charging_start_time)
     
 
-def execute_all(start_time):
+def execute_all(charging_start_time):
     charge_hours = check_needed_charge_time(baseurl, vin, charging_current)
     time.sleep(1)
-    start_time = charge_start_time(charge_hours, start_time)
+    charging_start_time = calculate_charging_start_time(charge_hours, charging_start_time)
     time.sleep(1)
-    set_charging_start(start_time,vin)
+    set_charging_start(charging_start_time,vin)
     
 
 # Schedule tasks
-schedule.every().day.at(set_time, 'Europe/Helsinki').do(execute_all, start_time).tag('execute_all')
+schedule.every().day.at(execution_time, 'Europe/Helsinki').do(execute_all, charging_start_time).tag('execute_all')
 
 print('Program started. Waiting for scheduled tasks..')
 # Main loop to execute scheduled tasks
