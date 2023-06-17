@@ -64,7 +64,7 @@ def check_needed_charge_time(baseurl, vin, charging_current, charging_efficiency
         data = response.json()
         battery_level = data['energy'][0]['level']
         needed_charge = 100 - int(battery_level)
-        charge_hours = round((45*(needed_charge/100))/((charging_efficiency/100)*(charging_current*3*225)/1000), 2) # Charge hours with two decimal accuracy
+        charge_hours = round((45*(needed_charge/100))/((charging_efficiency/100)*(charging_current*3*230)/1000), 2) # Charge hours with two decimal accuracy
         current_time = datetime.datetime.now(timezone).time()
         print(current_time,' INFO: Charge time calculated to be '+str(charge_hours)+' hours.')
         return charge_hours
