@@ -19,7 +19,7 @@ execution_time = '22:30' # When the prices are checked and the start time for th
 charge_hours = 5 # default charge time in hours if the needed charge time cannot be calculated.
 charging_start_time = '02:00' # default charging start time if there is some problems getting the prices etc.
 charging_current = 13 # Charging current per phase in A. Three phases assumed to be used.
-charging_efficiency = 80 # Charging efficiency as %.
+charging_efficiency = 82 # Charging efficiency as %.
 # Start time of the time range for price checking for the lowest prices. Start time is current day and stop time is the next day. So for example 23:00 - 07:00 over the night.
 price_check_time_range_start = '23:00'
 price_check_time_range_stop = '07:00'
@@ -63,8 +63,9 @@ def check_needed_charge_time(baseurl, vin, charging_current, charging_efficiency
     if response.status_code == 200:
         data = response.json()
         battery_level = data['energy'][0]['level']
-        needed_charge = 100 - int(battery_level)
-        charge_hours = round((45*(needed_charge/100))/((charging_efficiency/100)*(charging_current*3*230)/1000), 2) # Charge hours with two decimal accuracy
+        needed_charge = 45*((100 - int(battery_level))/(charging_efficiency/100))/100 # [kWh]
+        charging_power = ((charging_current*3*230)/1000)*(charging_efficiency/100) # [kW]
+        charge_hours = round((needed_charge)/(charging_power), 2) # Charge hours with two decimal accuracy
         current_time = datetime.datetime.now(timezone).time()
         print(current_time,' INFO: Charge time calculated to be '+str(charge_hours)+' hours.')
         return charge_hours
