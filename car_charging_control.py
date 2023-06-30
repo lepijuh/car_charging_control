@@ -19,7 +19,7 @@ execution_time = '22:30' # When the prices are checked and the start time for th
 charge_hours = 5 # default charge time in hours if the needed charge time cannot be calculated.
 charging_start_time = '02:00' # default charging start time if there is some problems getting the prices etc.
 charging_current = 13 # Charging current per phase in A. Three phases assumed to be used.
-charging_efficiency = 82 # Charging efficiency as %.
+charging_efficiency = 85 # Charging efficiency as %.
 # Start time of the time range for price checking for the lowest prices. Start time is current day and stop time is the next day. So for example 23:00 - 07:00 over the night.
 price_check_time_range_start = '23:00'
 price_check_time_range_stop = '07:00'
@@ -75,8 +75,8 @@ def check_needed_charge_time(baseurl, vin, charging_current, charging_efficiency
 
 
 def calculate_charging_start_time(charge_hours, charging_start_time, price_check_time_range_start, price_check_time_range_stop):
+    original_charge_hours = charge_hours
     charge_hours = math.ceil(charge_hours)
-    charge_hours += 1
     # Calculate the current and the next day
     current_date = datetime.date.today()
     next_date = current_date + datetime.timedelta(days=1)
@@ -111,8 +111,8 @@ def calculate_charging_start_time(charge_hours, charging_start_time, price_check
         # Check if the last hour is cheaper than the first hour and shift the charging_start_time if it is.
         first_price = data[0]["hinta"]
         last_price = data[-1]["hinta"]
-        if charge_hours > 1 and first_price >= last_price:
-            excess_time = 1 - (charge_hours - int(charge_hours))
+        if original_charge_hours > 1 and first_price >= last_price:
+            excess_time = round(1 - (original_charge_hours - int(original_charge_hours)), 2)
             # Parse the time string to a datetime object
             time_obj = datetime.datetime.strptime(time_min, "%H:%M")
             # Add excess_time to the time
