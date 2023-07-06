@@ -51,7 +51,7 @@ def check_needed_charge_time(baseurl, vin, charging_current, charging_efficiency
     response = None
     while attempt <= max_attempts:
         response = requests.get('http://'+baseurl+':5000/get_vehicleinfo/'+vin)
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time,' INFO: Request URL:', response.request.url)
         print(current_time,' INFO: Response Status Code:', response.status_code)
         if response.status_code == 200:
@@ -66,11 +66,11 @@ def check_needed_charge_time(baseurl, vin, charging_current, charging_efficiency
         needed_charge = 45*((100 - int(battery_level))/(charging_efficiency/100))/100 # [kWh]
         charging_power = ((charging_current*3*230)/1000)*(charging_efficiency/100) # [kW]
         charge_hours = round((needed_charge)/(charging_power), 2) # Charge hours with two decimal accuracy
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time,' INFO: Charge time calculated to be '+str(charge_hours)+' hours.')
         return charge_hours
     else:
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time,' ERROR: Vehicle info could not be retrieved after '+str(max_attempts)+' attempts. 1 minute between attempts.')
 
 
@@ -93,7 +93,7 @@ def calculate_charging_start_time(charge_hours, charging_start_time, price_check
     response = None
     while attempt <= max_attempts:
         response = requests.get(url, params=params)
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time,' INFO: Request URL:', response.request.url)
         print(current_time,' INFO: Response Status Code:', response.status_code)
         if response.status_code == 200:
@@ -122,11 +122,11 @@ def calculate_charging_start_time(charge_hours, charging_start_time, price_check
             charging_start_time = new_time_min
         else:
             charging_start_time = time_min
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time, ' INFO: Start time updated to '+ charging_start_time +' based on electricity prices.')
         return charging_start_time
     else: # If prices cannot be updated start time is at 02:00.
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time," ERROR: Electricity prices couldn't be updated after "+str(max_attempts)+" attempts. 60 seconds between attempts'. Maybe www.sahkonhpinta-api.fi is down. Start time is set to: " + charging_start_time)
 
 
@@ -144,14 +144,14 @@ def set_charging_start(charging_start_time,vin):
     response1 = None
     while attempt <= max_attempts:
         response1 = requests.get(url, params=params)
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time,' INFO: Request URL:', response1.request.url)
         print(current_time,' INFO: Response Status Code:', response1.status_code)
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time,' INFO: Waiting 30 seconds.')
         time.sleep(30)
         response2 = requests.get('http://'+baseurl+':5000/get_vehicleinfo/'+vin)
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time,' INFO: Request URL:', response2.request.url)
         print(current_time,' INFO: Response Status Code:', response2.status_code)
         data = response2.json()
@@ -159,16 +159,16 @@ def set_charging_start(charging_start_time,vin):
         time2 = charging_start_time
         if response1.status_code == 200 and response2.status_code == 200 and convert_to_minutes(time1) == convert_to_minutes(time2):      
             break  # Success, exit the loop
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time,' ERROR: Time could not be set on attempt number '+str(attempt)+'/'+str(max_attempts)+'. Waiting 15 minutes and trying again.')
         time.sleep(300)
         attempt += 1
     if attempt > max_attempts:
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time,' ERROR: Start time for charging could not be set after '+str(max_attempts)+' attempts. 15 minutes between each attempt.')
     else:
         time.sleep(2)
-        current_time = datetime.datetime.now(timezone).time()
+        current_time = datetime.datetime.now(timezone)
         print(current_time, ' INFO: Start time successfully set. Charging starts at '+charging_start_time)
     
 
