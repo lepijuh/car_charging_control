@@ -23,7 +23,7 @@ charging_efficiency = 85 # Charging efficiency as %.
 # Start time of the time range for price checking for the lowest prices. Start time is current day and stop time is the next day. So for example 23:00 - 07:00 over the night.
 price_check_time_range_start = '23:00'
 price_check_time_range_stop = '07:00'
-baseurl = '192.168.0.200' # IP to your psa-car-control listener.
+baseurl = '192.168.1.200' # IP to your psa-car-control listener.
 localization = 'Europe/Helsinki'
 timezone = pytz.timezone(localization) # Set the time zone to Finnish time (Eastern European Time) for datetime
 
